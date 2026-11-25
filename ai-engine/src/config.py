@@ -32,7 +32,8 @@ class Settings(BaseSettings):
     token1: str = ZERO
     pool_tick_spacing: int = 60
 
-    price_source: Literal["coinbase", "binance"] = "coinbase"
+    price_source: Literal["coinbase", "binance"] = "coinbase"  # candles
+    spot_source: Literal["coinbase", "binance", "coingecko"] | None = None  # mirror price, defaults to price_source
     mirror_deviation_bps: int = 30
     mirror_max_in_token0: int = 2 * 10**18  # mWETH budget per mirror swap (name kept from the env spec)
     mirror_max_in_usdc: int = 6_000 * 10**6  # mUSDC budget per mirror swap

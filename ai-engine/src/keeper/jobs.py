@@ -160,7 +160,7 @@ class MirrorJob:
         return dev_bps > self.settings.mirror_deviation_bps, target, token_in, max_in, pool_price, dev_bps
 
     def __call__(self) -> str:
-        real = self.spot(self.settings.price_source)
+        real = self.spot(self.settings.spot_source or self.settings.price_source)
         state = self.chain.pool_state()
         act, target, token_in, max_in, pool_price, dev = self.plan(real, state.sqrt_price_x96)
         if not act:

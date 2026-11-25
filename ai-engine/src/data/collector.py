@@ -13,6 +13,7 @@ from . import candles
 SPOT_URLS = {
     "coinbase": "https://api.exchange.coinbase.com/products/ETH-USD/ticker",
     "binance": "https://api.binance.com/api/v3/ticker/price?symbol=ETHUSDT",
+    "coingecko": "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
 }
 
 
@@ -51,7 +52,7 @@ def fetch_spot(source: str, client: httpx.Client | None = None) -> float:
         r = client.get(SPOT_URLS[source])
         r.raise_for_status()
         d = r.json()
-        return float(d["price"])
+        return float(d["ethereum"]["usd"] if source == "coingecko" else d["price"])
     finally:
         if own:
             client.close()
