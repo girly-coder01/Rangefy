@@ -79,3 +79,42 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .flash { animation: none; }
 }
+
+/* landing motion */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes band {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(-6px) scaleY(1.06); }
+}
+@keyframes ping-soft {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.fade-up { animation: fade-up 0.6s ease-out both; }
+.delay-1 { animation-delay: 0.08s; }
+.delay-2 { animation-delay: 0.16s; }
+.delay-3 { animation-delay: 0.24s; }
+.delay-4 { animation-delay: 0.32s; }
+.float { animation: float 6s ease-in-out infinite; }
+.draw { stroke-dasharray: 600; stroke-dashoffset: 600; animation: draw 2.2s ease-out 0.3s forwards; }
+.band { transform-origin: center; animation: band 5s ease-in-out infinite; }
+.ping-soft { animation: ping-soft 1.8s ease-out infinite; }
+.grid-glow {
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--foreground) 9%, transparent) 1px, transparent 0);
+  background-size: 28px 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .float, .band, .ping-soft { animation: none; }
+  .draw { animation: none; stroke-dashoffset: 0; }
+}
