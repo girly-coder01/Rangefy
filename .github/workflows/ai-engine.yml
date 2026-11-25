@@ -1,0 +1,25 @@
+name: AI Engine
+
+on:
+  push:
+    branches: [main]
+    paths: ["ai-engine/**", ".github/workflows/ai-engine.yml"]
+  pull_request:
+    paths: ["ai-engine/**", ".github/workflows/ai-engine.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-engine
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ai-engine/pyproject.toml
+      - run: pip install --extra-index-url https://download.pytorch.org/whl/cpu -e ".[dev]"
+      - run: ruff check src tests scripts
+      - run: pytest -v --cov=src
