@@ -1,0 +1,17 @@
+# AI engine on a VPS: API + keeper sharing ai-engine/data (models, SQLite).
+# Put the API behind HTTPS (Caddy/nginx/Cloudflare) — the Vercel app can't call plain http.
+services:
+  api:
+    build: ./ai-engine
+    command: uvicorn src.server.app:app --host 0.0.0.0 --port 8000
+    env_file: [./ai-engine/.env, ./ai-engine/.env.addresses]
+    ports: ["8000:8000"]
+    volumes: ["./ai-engine/data:/app/data"]
+    restart: unless-stopped
+
+  keeper:
+    build: ./ai-engine
+    command: python scripts/run_keeper.py
+    env_file: [./ai-engine/.env, ./ai-engine/.env.addresses]
+    volumes: ["./ai-engine/data:/app/data"]
+    restart: unless-stopped

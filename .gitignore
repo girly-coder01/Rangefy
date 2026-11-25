@@ -1,0 +1,48 @@
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/*/31337/
+contracts/broadcast/*/31338/
+contracts/broadcast/**/dry-run/
+contracts/lcov.info
+
+# Python
+ai-engine/.venv/
+**/__pycache__/
+ai-engine/.pytest_cache/
+ai-engine/.mypy_cache/
+ai-engine/.ruff_cache/
+ai-engine/*.egg-info/
+ai-engine/data/raw/
+ai-engine/data/models/*.pt
+ai-engine/data/models/*.pkl
+ai-engine/data/models/*.joblib
+ai-engine/data/*.db
+ai-engine/.coverage
+ai-engine/coverage.xml
+*.pyc
+
+# Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/coverage/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.local.example
+
+# OS / IDE
+.DS_Store
+.idea/
+*.swp
+
+# Local anvil stack (scripts/local-stack.sh)
+contracts/deployments/31337/
+contracts/deployments/31338/
+ai-engine/data/local.db
