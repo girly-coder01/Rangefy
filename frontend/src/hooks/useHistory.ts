@@ -2,13 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { usePublicClient } from "wagmi";
-import { getAbiItem, type Address, type PublicClient } from "viem";
+import { decodeEventLog, getAbiItem, hexToString, toEventSelector, type Address, type PublicClient } from "viem";
 import { addresses, isDeployed } from "@/config/addresses";
-import { RangeVaultAbi, RangefyHookAbi } from "@/config/abis";
+import { RangeVaultAbi, RangefyHookAbi, SignalOracleAbi } from "@/config/abis";
 import { blockClock } from "@/lib/pool";
+import { activeChain } from "@/config/chains";
 import type { FeeEvent, PriceSample, RangeSegment, Snapshot } from "@/lib/performance";
 
-const CHUNK = 10_000n;
+const RPC_STEP = 1000n;
 
 const ev = {
   snapshot: getAbiItem({ abi: RangeVaultAbi, name: "Snapshot" }),
@@ -17,34 +18,77 @@ const ev = {
   deposit: getAbiItem({ abi: RangeVaultAbi, name: "Deposit" }),
   withdraw: getAbiItem({ abi: RangeVaultAbi, name: "Withdraw" }),
   poolState: getAbiItem({ abi: RangefyHookAbi, name: "PoolStateUpdated" }),
+  signal: getAbiItem({ abi: SignalOracleAbi, name: "SignalPosted" }),
 };
 type EventKey = keyof typeof ev;
 
 type Cached = { toBlock: bigint; logs: unknown[] };
 const cache = new Map<string, Cached>();
 
-// incremental, chunked; halves the chunk if the RPC refuses
-async function fetchLogs(client: PublicClient, key: EventKey, address: Address | Address[]) {
-  const id = `${client.chain?.id}:${key}:${[address].flat().join(",")}`;
+type Log = { args: Record<string, unknown>; blockNumber: bigint; address: Address; transactionHash: `0x${string}` };
+
+// On Unichain Sepolia history comes from /api/logs (server-cached Blockscout, one call per contract).
+// Local chains have no explorer, so they use chunked RPC.
+const USE_PROXY = activeChain.id === 1301;
+
+type RawLog = { topics: `0x${string}`[]; data: `0x${string}`; blockNumber: string; transactionHash: `0x${string}`; address: Address };
+const inflight = new Map<string, { at: number; p: Promise<RawLog[]> }>();
+
+function contractLogs(address: Address): Promise<RawLog[]> {
+  const hit = inflight.get(address);
+  if (hit && Date.now() - hit.at < 10_000) return hit.p;
+  const p = fetch(`/api/logs?address=${address}`, { signal: AbortSignal.timeout(30_000) }).then(async (r) => {
+    const body = (await r.json()) as { logs?: RawLog[]; error?: string };
+    if (!r.ok || !body.logs) throw new Error(body.error ?? `logs ${r.status}`);
+    return body.logs;
+  });
+  inflight.set(address, { at: Date.now(), p });
+  p.catch(() => inflight.delete(address));
+  return p;
+}
+
+async function explorerLogs(key: EventKey, address: Address): Promise<Log[]> {
+  const topic0 = toEventSelector(ev[key]).toLowerCase();
+  const out: Log[] = [];
+  for (const r of await contractLogs(address)) {
+    if (r.topics[0]?.toLowerCase() !== topic0) continue;
+    const d = decodeEventLog({ abi: [ev[key]], topics: r.topics.filter(Boolean) as [`0x${string}`, ...`0x${string}`[]], data: r.data });
+    out.push({ args: d.args as Record<string, unknown>, blockNumber: BigInt(r.blockNumber), address: r.address, transactionHash: r.transactionHash });
+  }
+  return out;
+}
+
+async function rpcLogs(client: PublicClient, key: EventKey, address: Address, from: bigint, latest: bigint) {
+  const ranges: [bigint, bigint][] = [];
+  for (let a = from; a <= latest; a += RPC_STEP) ranges.push([a, a + RPC_STEP - 1n > latest ? latest : a + RPC_STEP - 1n]);
+  const out: Log[] = [];
+  for (let i = 0; i < ranges.length; i += 8) {
+    const batch = await Promise.all(
+      ranges.slice(i, i + 8).map(([fromBlock, toBlock]) =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        client.getLogs({ address, event: ev[key] as any, fromBlock, toBlock }),
+      ),
+    );
+    for (const b of batch) out.push(...(b as unknown as Log[]));
+  }
+  return out;
+}
+
+// proxy first; RPC fallback is incremental and chunked
+async function fetchLogs(client: PublicClient, key: EventKey, address: Address): Promise<Log[]> {
+  if (USE_PROXY) {
+    try {
+      return await explorerLogs(key, address);
+    } catch {}
+  }
+  const id = `${client.chain?.id}:${key}:${address}`;
   const latest = await client.getBlockNumber();
   const prev = cache.get(id);
-  let from = prev ? prev.toBlock + 1n : BigInt(addresses.deployBlock);
-  const logs = prev ? [...prev.logs] : [];
-  let step = CHUNK;
-  while (from <= latest) {
-    const to = from + step - 1n > latest ? latest : from + step - 1n;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const chunk = await client.getLogs({ address, event: ev[key] as any, fromBlock: from, toBlock: to });
-      logs.push(...chunk);
-      from = to + 1n;
-    } catch (e) {
-      if (step <= 500n) throw e;
-      step /= 2n;
-    }
-  }
+  const from = prev ? prev.toBlock + 1n : BigInt(addresses.deployBlock);
+  if (from > latest) return prev!.logs as Log[];
+  const logs = [...((prev?.logs as Log[]) ?? []), ...(await rpcLogs(client, key, address, from, latest))];
   cache.set(id, { toBlock: latest, logs });
-  return logs as Array<{ args: Record<string, unknown>; blockNumber: bigint; address: Address; transactionHash: `0x${string}` }>;
+  return logs;
 }
 
 async function clock(client: PublicClient) {
@@ -190,6 +234,29 @@ export function useAllVaultHistories(vaults?: readonly { vault: Address; tickLow
         vaults!.map(async (v) => [v.vault, await loadVaultHistory(client as PublicClient, v.vault, v)] as const),
       );
       return Object.fromEntries(entries) as Record<Address, VaultHistory>;
+    },
+  });
+}
+
+export type OnchainSignal = { ts: number; sigma: number; drift: number; regime: number; confidenceBps: number; version: string; tx: `0x${string}` };
+
+export function useOnchainSignals() {
+  const client = usePublicClient();
+  return useQuery({
+    queryKey: ["onchainSignals"],
+    enabled: isDeployed && !!client,
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<OnchainSignal[]> => {
+      const logs = await fetchLogs(client as PublicClient, "signal", addresses.signalOracle);
+      return logs.map((l) => ({
+        ts: Number(l.args.updatedAt),
+        sigma: Number(l.args.sigmaTicks),
+        drift: Number(l.args.driftTicks),
+        regime: Number(l.args.regime),
+        confidenceBps: Number(l.args.confidenceBps),
+        version: hexToString(l.args.modelVersion as `0x${string}`).replace(/\0+$/, ""),
+        tx: l.transactionHash,
+      }));
     },
   });
 }

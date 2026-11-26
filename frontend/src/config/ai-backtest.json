@@ -1,0 +1,96 @@
+{
+  "backtest": {
+    "period": {
+      "start": "2024-11-06 10:30:00+00:00",
+      "end": "2024-12-29 23:30:00+00:00",
+      "minutes": 77101
+    },
+    "assumptions": {
+      "fee_rate": 0.003,
+      "daily_volume_usd": 5000000.0,
+      "pool_liquidity": 3000000.0,
+      "capital_usd": 10000.0
+    },
+    "profile": {
+      "width_multiplier": 2.0,
+      "min_half_width": 300,
+      "max_half_width": 6000,
+      "drift_weight": 0.2,
+      "cooldown_min": 15,
+      "edge_buffer": 0.1,
+      "width_drift": 0.3
+    },
+    "results": [
+      {
+        "name": "fixed ±600",
+        "final_value": 8294.78316306438,
+        "return_pct": -17.052168369356203,
+        "hodl_return_pct": -8.353216175634548,
+        "alpha_vs_hodl_pct": -8.698952193721654,
+        "fees_usd": 657.2661083653576,
+        "rebalance_cost_usd": 168.2871976769675,
+        "rebalances": 15,
+        "time_in_range_pct": 100.0
+      },
+      {
+        "name": "EWMA-sized",
+        "final_value": 8171.359126369105,
+        "return_pct": -18.286408736308946,
+        "hodl_return_pct": -8.353216175634548,
+        "alpha_vs_hodl_pct": -9.933192560674398,
+        "fees_usd": 716.6738997306253,
+        "rebalance_cost_usd": 512.1224298224517,
+        "rebalances": 361,
+        "time_in_range_pct": 100.0
+      },
+      {
+        "name": "AI-sized (Balanced)",
+        "final_value": 8519.484701838237,
+        "return_pct": -14.805152981617631,
+        "hodl_return_pct": -8.353216175634548,
+        "alpha_vs_hodl_pct": -6.451936805983083,
+        "fees_usd": 792.7692980797143,
+        "rebalance_cost_usd": 231.69758297787277,
+        "rebalances": 50,
+        "time_in_range_pct": 100.0
+      }
+    ]
+  },
+  "metrics": {
+    "sigma": {
+      "ewma_baseline": {
+        "mae_ticks": 98.67687998744744,
+        "qlike": 0.42094989492612395,
+        "regime_accuracy": 0.4690781796966161
+      },
+      "random_forest": {
+        "mae_ticks": 76.54196395711564,
+        "qlike": 0.33013453793518654,
+        "regime_accuracy": 0.5211979774406845
+      },
+      "transformer": {
+        "mae_ticks": 75.56104037460011,
+        "qlike": 0.3398275709836839,
+        "regime_accuracy": 0.543757292882147
+      },
+      "ensemble": {
+        "mae_ticks": 75.04015556187795,
+        "qlike": 0.32127333409652675,
+        "regime_accuracy": 0.5371450797355115
+      }
+    },
+    "ensemble_beats_ewma": true
+  },
+  "model_version": "rfyaeb6f",
+  "regime_edges": [
+    188.4141487778834,
+    320.8188980498265,
+    547.5150491116066
+  ],
+  "data": {
+    "source": "synthetic-365d",
+    "start": "2024-01-01 00:00:00+00:00",
+    "end": "2024-12-30 23:59:00+00:00",
+    "rows": 525600
+  }
+}

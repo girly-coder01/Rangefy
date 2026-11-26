@@ -30,7 +30,7 @@ export function Banners() {
   if (pool && !pool.signalFresh) {
     return (
       <Bar tone="neutral">
-        AI signal is stale. Ranges and fees are using the hook&apos;s on-chain volatility.{" "}
+        AI signal paused (stale). Ranges and fees use the hook&apos;s on-chain volatility.{" "}
         <Link href="/ai" className="underline">Details</Link>
       </Bar>
     );
