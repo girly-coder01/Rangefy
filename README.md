@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://rangefy.vercel.app"><b>Live App</b></a> ·
   <a href="https://youtu.be/REPLACE_WITH_DEMO"><b>Demo Video</b></a> ·
-  <a href="https://REPLACE_WITH_PITCH_DECK"><b>Pitch Deck</b></a> ·
+  <a href="https://docs.google.com/presentation/d/1nNHAJz3MeQKNjKMPDXCHON2-eMMdxYxh/edit?usp=sharing"><b>Pitch Deck</b></a> ·
   <a href="docs/Rangefy.md"><b>Design Doc</b></a>
 </p>
 
@@ -115,7 +115,24 @@ make fe-install && cd frontend && npm run dev
 make fork-stack && make e2e          # full stack on a Unichain Sepolia fork
 ```
 
-Deploy your own: `make wallets` → fund deployer → `make fund` → `make deploy`. AI engine: `docker compose up -d` (behind HTTPS). Frontend on Vercel with root `frontend` and `NEXT_PUBLIC_CHAIN_ID=1301`.
+Deploy your own contracts: `make wallets` → fund deployer → `make fund` → `make deploy`.
+
+## Deploy on Vercel (frontend + keeper)
+
+Everything runs on Vercel: the app, a keeper route (`/api/keeper`: rebalance, harvest, price mirror), a cached event-history route (`/api/logs`) and a market price route (`/api/market`). The live AI signal is paused for now, so ranges and fees use the hook's on-chain volatility, which is the protocol's built-in fallback.
+
+1. Import the repo on Vercel, **Root Directory** `frontend`.
+2. Environment variables:
+
+| Name | Value |
+|---|---|
+| `NEXT_PUBLIC_CHAIN_ID` | `1301` |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | from cloud.reown.com |
+| `CRON_SECRET` | any long random string |
+| `KEEPER_PRIVATE_KEY` | keeper wallet key (`KEEPER_KEY` in `contracts/.env`) |
+| `MIRROR_PRIVATE_KEY` | mirror wallet key (`MIRROR_KEY` in `contracts/.env`) |
+
+3. Schedule the keeper: Vercel Hobby cron runs once a day (`vercel.json`), so add a free [cron-job.org](https://cron-job.org) job calling `https://<your-app>/api/keeper` every 1–2 minutes with header `Authorization: Bearer <CRON_SECRET>`.
 
 ## Limitations
 
